@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> PDA Visualizer</title>
+    <style>
+        :root {
+            --bg: #f5f3ff; /* Very light lavender bg */
+            --panel: rgba(255, 255, 255, 0.7);
+            --accent: #8b5cf6; /* Vibrant Lavender/Violet */
+            --accent-soft: #ddd6fe;
+            --accent-glow: rgba(139, 92, 246, 0.2);
+            --text-main: #2e1065; /* Deep purple text */
+            --text-muted: #6d28d9;
+            --border: #c4b5fd;
+            --danger: #ef4444;
+            --success: #10b981;
+            --card-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(266,100%,92%,1) 0, transparent 50%), 
+                radial-gradient(at 50% 100%, hsla(256,100%,94%,1) 0, transparent 50%);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Top Bar */
+        header {
+            padding: 1rem 2rem;
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(139, 92, 246, 0.1);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--accent);
+            letter-spacing: -0.5px;
+        }
+
+        header h1 span { color: var(--text-main); font-weight: 300; }
+
+        /* Main Container */
+        main {
+            display: flex;
+            flex: 1;
+            padding: 24px;
+            gap: 24px;
+            overflow: hidden;
+        }
+
+        /* Sidebar Controls */
+        #controls {
+            width: 340px;
+            background: var(--panel);
+            backdrop-filter: blur(10px);
+            padding: 24px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            box-shadow: 0 10px 30px rgba(139, 92, 246, 0.1);
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: var(--text-muted);
+        }
+
+        textarea, input {
+            width: 100%;
+            background: var(--card-bg);
+            border: 2px solid var(--accent-soft);
+            color: var(--text-main);
+            padding: 12px;
+            border-radius: 12px;
+            font-family: 'Consolas', monospace;
+            font-size: 0.9rem;
+            transition: all 0.25s;
+            box-sizing: border-box;
+        }
+
+        textarea:focus, input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px var(--accent-glow);
+        }
+
+        .actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        button {
+            padding: 14px;
+            border-radius: 12px;
+            border: none;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 0.85rem;
+        }
+
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-run { background: var(--text-main); color: white; }
+        button:hover { transform: translateY(-2px); opacity: 0.9; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+
+        /* Workspace */
+        #workspace {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 24px;
+        }
+
+        #visualizer {
+            background: var(--panel);
+            border-radius: 24px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 40px;
+        }
+
+        /* Stack Visuals */
+        #stack-container {
+            width: 110px;
+            height: 315px;
+            border: 4px solid var(--accent);
+            border-top: none;
+            background: linear-gradient(to top, var(--accent-soft), transparent);
+            border-radius: 0 0 16px 16px;
+            display: flex;
+            flex-direction: column-reverse;
+            padding: 8px;
+            gap: 6px;
+            position: relative;
+        }
+
+        .stack-item {
+            height: 42px;
+            background: white;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            border-radius: 8px;
+            border: 2px solid var(--accent);
+            box-shadow: 0 4px 0 var(--accent-soft);
+            animation: bounceIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes bounceIn {
+            from { opacity: 0; transform: scale(0.5) translateY(-50px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        /* Status HUD */
+        #status-hud {
+            position: absolute;
+            top: 24px;
+            left: 24px;
+            right: 24px;
+            display: flex;
+            gap: 16px;
+        }
+
+        .hud-card {
+            background: white;
+            padding: 12px 24px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            flex: 1;
+        }
+
+        .hud-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+        .hud-value { font-family: 'Courier New', monospace; font-size: 1.3rem; color: var(--accent); font-weight: 800; display: block; }
+
+        /* Console */
+        #console-panel {
+            display: flex;
+            flex-direction: column;
+        }
+
+        #log {
+            flex: 1;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 20px;
+            font-family: 'Consolas', monospace;
+            font-size: 0.85rem;
+            overflow-y: auto;
+            color: var(--text-main);
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.02);
+        }
+
+        .log-entry {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--bg);
+            line-height: 1.4;
+        }
+
+        .log-entry.error { color: var(--danger); font-weight: bold; }
+        .log-entry.success { color: var(--success); font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1><span>PDA Simulator</span></h1>
+        <!-- <div id="runtime-status" style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted);">STATUS: ONLINE</div> -->
+    </header>
+
+    <main>
+        <aside id="controls">
+            <div class="input-group">
+                <label>TRANSITIONS</label>
+                <textarea id="transitionInput" rows="10">q0, a, Z -> q0, AZ
+q0, a, A -> q0, AA
+q0, b, A -> q1, ε
+q1, b, A -> q1, ε
+q1, ε, Z -> qf, Z</textarea>
+            </div>
+
+            <div class="input-group">
+                <label>INPUT STRING</label>
+                <input type="text" id="stringInput" value="aabb">
+            </div>
+
+            <div class="input-group">
+                <label>STACK INITIAL</label>
+                <input type="text" id="startStack" value="Z">
+            </div>
+
+            <div class="actions">
+                <button class="btn-primary" onclick="initPDA()">INITIALIZE</button>
+                <button class="btn-run" id="stepBtn" onclick="step()">STEP FORWARD</button>
+            </div>
+        </aside>
+
+        <section id="workspace">
+            <div id="visualizer">
+                <div id="status-hud">
+                    <div class="hud-card">
+                        <span class="hud-label">Current State</span>
+                        <span id="currStateDisplay" class="hud-value">-</span>
+                    </div>
+                    <div class="hud-card">
+                        <span class="hud-label">String</span>
+                        <span id="currInputDisplay" class="hud-value">-</span>
+                    </div>
+                </div>
+
+                <div id="stack-container"></div>
+            </div>
+
+            <div id="console-panel">
+                <div class="input-group" style="height: 100%; display: flex; flex-direction: column;">
+                    <label>EXECUTION LOG</label>
+                    <div id="log">
+                        <div class="log-entry"> PDA simulation...</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        let pda = {
+            state: 'q0',
+            stack: [],
+            input: '',
+            transitions: [],
+            isHalted: true
+        };
+
+        function addLog(msg, type = 'info') {
+            const log = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.innerText = `> ${msg}`;
+            log.prepend(entry);
+        }
+
+        function updateUI() {
+            document.getElementById('currStateDisplay').innerText = pda.state;
+            document.getElementById('currInputDisplay').innerText = pda.input || "ε";
+            
+            const container = document.getElementById('stack-container');
+            container.innerHTML = '';
+            pda.stack.forEach(symbol => {
+                const item = document.createElement('div');
+                item.className = 'stack-item';
+                item.innerText = symbol;
+                container.appendChild(item);
+            });
+        }
+
+        function parseTransitions() {
+            const text = document.getElementById('transitionInput').value;
+            const lines = text.split('\n');
+            const parsed = [];
+
+            lines.forEach(line => {
+                if(!line.trim()) return;
+                try {
+                    const [left, right] = line.split('->');
+                    const [currState, char, pop] = left.split(',').map(s => s.trim());
+                    const [nextState, push] = right.split(',').map(s => s.trim());
+                    parsed.push({ currState, char, pop, nextState, push });
+                } catch (e) {
+                    addLog("Error: Invalid transition format", "error");
+                }
+            });
+            return parsed;
+        }
+
+        function initPDA() {
+            pda.transitions = parseTransitions();
+            pda.input = document.getElementById('stringInput').value;
+            pda.stack = [document.getElementById('startStack').value];
+            pda.state = 'q0';
+            pda.isHalted = false;
+            
+            document.getElementById('log').innerHTML = '';
+            document.getElementById('currStateDisplay').style.color = "var(--accent)";
+            // addLog("PDA Initialized with lavender theme.");
+            updateUI();
+        }
+
+        function step() {
+            if (pda.isHalted) return;
+
+            const top = pda.stack[pda.stack.length - 1];
+            const char = pda.input[0] || 'ε';
+
+            let trans = pda.transitions.find(t => 
+                t.currState === pda.state && t.char === char && t.pop === top
+            );
+
+            let consumed = true;
+            if (!trans) {
+                trans = pda.transitions.find(t => 
+                    t.currState === pda.state && t.char === 'ε' && t.pop === top
+                );
+                consumed = false;
+            }
+
+            if (!trans) {
+                addLog(`Rejected: No transition for (${pda.state}, ${char}, ${top})`, "error");
+                pda.isHalted = true;
+                return;
+            }
+
+            addLog(`${pda.state} --(${trans.char}, ${trans.pop}→${trans.push})--> ${trans.nextState}`);
+            
+            pda.state = trans.nextState;
+            if (consumed && char !== 'ε') {
+                pda.input = pda.input.substring(1);
+            }
+
+            pda.stack.pop(); 
+            if (trans.push !== 'ε') {
+                const toPush = trans.push.split('').reverse();
+                toPush.forEach(s => pda.stack.push(s));
+            }
+
+            updateUI();
+
+            if (pda.input.length === 0 && pda.state.includes('f')) {
+                addLog("ACCEPTED: String recognized!", "success");
+                document.getElementById('currStateDisplay').style.color = "var(--success)";
+                pda.isHalted = true;
+            }
+        }
+    </script>
+</body>
+</html>
